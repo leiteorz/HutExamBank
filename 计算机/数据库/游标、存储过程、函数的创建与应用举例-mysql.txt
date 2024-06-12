@@ -1,0 +1,108 @@
+  (游标和存储过程的应用举例)
+1、教材p256 例8.9
+     create table account 
+(accountnum int primary key,
+total bigint
+);
+CREATE  PROCEDURE TRANSFER(inAccount INT,outAccount  INT,amount FLOAT) 
+       /*定义存储过程TRANSFER，其参数为转入账户、转出账户、转账额度*/
+	 BEGIN 
+ DECLARE		/*定义变量*/
+	        totalDepositOut ,  totalDepositIn Float;
+	declare	inAccountnum INT;
+	            /*检查转出账户的余额 */	                       
+	       SELECT Total INTO totalDepositOut FROM account 
+	       WHERE accountnum=outAccount; 
+	       IF totalDepositOut IS NULL THEN   
+  /*如果转出账户不存在或账户中没有存款*/
+	                ROLLBACK; 	   /*回滚事务*/
+	                -- RETURN;
+	       END IF; 
+ IF totalDepositOut< amount THEN    	/*如果账户存款不足*/
+	ROLLBACK; 				/*回滚事务*/
+	-- RETURN;
+END IF;
+SELECT Accountnum INTO inAccountnum FROM Account
+WHERE accountnum=inAccount;
+IF inAccount IS NULL THEN  		/*如果转入账户不存在*/                        
+	ROLLBACK; 	         	 		/*回滚事务*/
+	-- RETURN;
+END IF;
+UPDATE Account SET total=total-amount  WHERE accountnum=outAccount;
+ 				/* 修改转出账户余额，减去转出额 */
+UPDATE Account SET total=total + amount 
+WHERE   accountnum=inAccount; 
+				/* 修改转入账户余额，增加转入额 */
+COMMIT;                       	/* 提交转账事务 */
+END;
+
+2、先在emp表中添加一列stars，存储员工的工资星级，
+工资每达到1000加一颗*，工资不足1000的星级为空。
+创建存储过程，更新每个员工的工资星级。  
+解答：
+   cursor  =结果集缓冲区  游标
+   	1、declare 声明游标
+	2、用open 打开游标
+	3、用fetch 命令 取游标里的数据
+	4、close 关闭游标，deallocate 释放游标
+	select * from emp;
+	alter table emp drop column stars;
+	alter table emp add stars varchar(20);
+	 drop PROCEDURE if exists up_star;
+	create procedure up_star() 
+ 	begin
+	  declare   eno,  i ,  s ,done int DEFAULT 0; 
+ declare   star varchar(20);
+	declare c_emp cursor  for select empno,sal from emp;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET done =1; 
+	open c_emp;
+REPEAT
+	fetch c_emp into  eno, s;
+ 	set  star=' ';
+		  set  i= s div 1000;
+	 while ( i>0) do
+	 	 set  star=CONCAT(star, '*') ;
+	 set  i=i-1;
+	 end while;
+	 update emp set stars= star where empno=eno;
+	   
+UNTIL done end repeat;
+	 close c_emp;
+	 	end;
+
+-- call up_star;
+
+
+ 
+3、利用自定义函数实现上述题2中的工资星级功能
+drop FUNCTION if exists star;
+create function star( salary float)returns varchar(50) 
+begin
+declare  x int default 0;
+declare  es varchar(50);
+set  x=(salary div 1000);
+set  es='';
+    while  x>0  do
+  
+  set  es=concat(es,'*' );   
+  set  x= x-1;
+  end while;
+ return  es;
+end;
+
+-- select star(1589);
+
+4、（自定义函数练习）创建自定义函数，输出整数n的阶乘。
+create function nn(  n int) returns  bigint
+begin
+ declare  s bigint  default 1;
+ DECLARE i int default 1  ;
+   if  n<=1 then return 1  ;
+end if;
+  while  i<= n do
+    set  s= s*i;
+    set  i= i+1;   
+  end while ;
+ RETURN s;
+end; 
+   
